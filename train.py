@@ -26,7 +26,7 @@ from huggingface_hub import HfApi
 from jobs import BaseJob
 from toolkit.config import get_config
 
-# from caption import Captioner
+from caption import Captioner
 from wandb_client import WeightsAndBiasesClient, logout_wandb
 from layer_match import match_layers_to_optimize, available_layers_to_optimize
 
@@ -278,6 +278,7 @@ def train(
                             "lr": learning_rate,
                             "ema_config": {"use_ema": True, "ema_decay": 0.99},
                             "dtype": "bf16",
+                            "skip_first_sample": True,
                         },
                         "model": {
                             "name_or_path": str(WEIGHTS_PATH),
@@ -442,8 +443,6 @@ def handle_hf_readme(hf_repo_id: str, trigger_word: Optional[str]):
     else:
         content = content.replace("[trigger_section]", "")
         content = content.replace("[instance_prompt]", "")
-
-    print(content)
 
     readme_path.write_text(content)
 

@@ -60,6 +60,7 @@ ASPECT_RATIOS = {
     "4:3": (1152, 896),
     "9:16": (768, 1344),
     "9:21": (640, 1536),
+    "custom_size": None
 }
 
 # Suppress diffusers nsfw warnings
@@ -168,6 +169,8 @@ class Predictor(BasePredictor):
         #     "schnell": schnell_pipe,
         # }
 
+        self.pipes = {}
+
         # # Load img2img pipelines
         # print("Loading Flux dev img2img pipeline")
         # dev_img2img_pipe = FluxImg2ImgPipeline(
@@ -252,7 +255,7 @@ class Predictor(BasePredictor):
         ),
         aspect_ratio: str = Input(
             description="Aspect ratio for the generated image in text-to-image mode. The size will always be 1 megapixel, i.e. 1024x1024 if aspect ratio is 1:1. To use arbitrary width and height, set aspect ratio to 'custom'. Note: Ignored in img2img and inpainting modes.",
-            choices=list(ASPECT_RATIOS.keys()) + ["custom"],  # pyright: ignore
+            choices=list(ASPECT_RATIOS.keys()),
             default="1:1",
         ),
         width: int = Input(
@@ -303,7 +306,9 @@ class Predictor(BasePredictor):
             default=0.8,
         ),
         seed: int = Input(
-            description="Random seed. Set for reproducible generation.", default=None
+            description="Random seed for reproducibility",
+            default=42,
+            ge=0,
         ),
         extra_lora: str = Input(
             description="Combine this fine-tune with another LoRA. Supports Replicate models in the format <owner>/<username> or <owner>/<username>/<version>, HuggingFace URLs in the format huggingface.co/<owner>/<model-name>, CivitAI URLs in the format civitai.com/models/<id>[/<model-name>], or arbitrary .safetensors URLs from the Internet. For example, 'fofr/flux-pixar-cars'",
@@ -336,14 +341,25 @@ class Predictor(BasePredictor):
         ),
     ) -> List[Path]:
         """Run a single prediction on the model"""
-        if seed is None or seed < 0:
-            seed = int.from_bytes(os.urandom(2), "big")
-        print(f"Using seed: {seed}")
 
-        if aspect_ratio == "custom":
+        # Handle FieldInfo inputs
+        if hasattr(prompt, 'default'):
+            prompt = prompt.default
+        if hasattr(image, 'default'):
+            image = image.default
+        if hasattr(mask, 'default'):
+            mask = mask.default
+
+        # Convert seed to int and validate
+        seed_value = seed if isinstance(seed, int) else None
+        if seed_value is None or seed_value < 0:
+            seed_value = int.from_bytes(os.urandom(2), "big")
+        print(f"Using seed: {seed_value}")
+
+        if aspect_ratio == "custom_size":
             if width is None or height is None:
                 raise ValueError(
-                    "width and height must be defined if aspect ratio is 'custom'"
+                    "width and height must be defined if aspect ratio is 'custom_size'"
                 )
             width = make_multiple_of_16(width)
             height = make_multiple_of_16(height)
@@ -397,81 +413,81 @@ class Predictor(BasePredictor):
             )
         else:  # is_txt2img_mode
             print("[!] txt2img mode")
-            pipe = self.pipes[model]
-            flux_kwargs["width"] = width
-            flux_kwargs["height"] = height
+            # pipe = self.pipes[model]
+            # flux_kwargs["width"] = width
+            # flux_kwargs["height"] = height
 
-        if replicate_weights:
-            flux_kwargs["joint_attention_kwargs"] = {"scale": lora_scale}
+        # if replicate_weights:
+        #     flux_kwargs["joint_attention_kwargs"] = {"scale": lora_scale}
 
-        assert model in ["dev", "schnell"]
-        if model == "dev":
-            print("Using dev model")
-            max_sequence_length = 512
-        else:  # model == "schnell":
-            print("Using schnell model")
-            max_sequence_length = 256
-            guidance_scale = 0
+        # assert model in ["dev", "schnell"]
+        # if model == "dev":
+        #     print("Using dev model")
+        #     max_sequence_length = 512
+        # else:  # model == "schnell":
+        #     print("Using schnell model")
+        #     max_sequence_length = 256
+        #     guidance_scale = 0
 
-        if replicate_weights:
-            start_time = time.time()
-            if extra_lora:
-                flux_kwargs["joint_attention_kwargs"] = {"scale": 1.0}
-                print(f"Loading extra LoRA weights from: {extra_lora}")
-                self.load_multiple_loras(replicate_weights, extra_lora, model)
-                pipe.set_adapters(
-                    ["main", "extra"], adapter_weights=[lora_scale, extra_lora_scale]
-                )
-            else:
-                flux_kwargs["joint_attention_kwargs"] = {"scale": lora_scale}
-                self.load_single_lora(replicate_weights, model)
-                pipe.set_adapters(["main"], adapter_weights=[lora_scale])
-            print(f"Loaded LoRAs in {time.time() - start_time:.2f}s")
-        else:
-            pipe.unload_lora_weights()
-            self.loaded_lora_urls[model] = LoadedLoRAs(main=None, extra=None)
+        # if replicate_weights:
+        #     start_time = time.time()
+        #     if extra_lora:
+        #         flux_kwargs["joint_attention_kwargs"] = {"scale": 1.0}
+        #         print(f"Loading extra LoRA weights from: {extra_lora}")
+        #         self.load_multiple_loras(replicate_weights, extra_lora, model)
+        #         pipe.set_adapters(
+        #             ["main", "extra"], adapter_weights=[lora_scale, extra_lora_scale]
+        #         )
+        #     else:
+        #         flux_kwargs["joint_attention_kwargs"] = {"scale": lora_scale}
+        #         self.load_single_lora(replicate_weights, model)
+        #         pipe.set_adapters(["main"], adapter_weights=[lora_scale])
+        #     print(f"Loaded LoRAs in {time.time() - start_time:.2f}s")
+        # else:
+        #     pipe.unload_lora_weights()
+        #     self.loaded_lora_urls[model] = LoadedLoRAs(main=None, extra=None)
 
-        generator = torch.Generator(device="cuda").manual_seed(seed)
+        # generator = torch.Generator(device="cuda").manual_seed(seed_value)
 
-        common_args = {
-            "prompt": [prompt] * num_outputs,
-            "guidance_scale": guidance_scale,
-            "generator": generator,
-            "num_inference_steps": num_inference_steps,
-            "max_sequence_length": max_sequence_length,
-            "output_type": "pil",
-        }
+        # common_args = {
+        #     "prompt": [prompt] * num_outputs,
+        #     "guidance_scale": guidance_scale,
+        #     "generator": generator,
+        #     "num_inference_steps": num_inference_steps,
+        #     "max_sequence_length": max_sequence_length,
+        #     "output_type": "pil",
+        # }
 
-        output = pipe(**common_args, **flux_kwargs)
+        # output = pipe(**common_args, **flux_kwargs)
 
-        has_nsfw_content = None
-        if not disable_safety_checker:
-            _, has_nsfw_content = self.run_safety_checker(output.images)
+        # has_nsfw_content = None
+        # if not disable_safety_checker:
+        #     _, has_nsfw_content = self.run_safety_checker(output.images)
 
-        output_paths = []
-        for i, image in enumerate(output.images):
-            if has_nsfw_content is not None and has_nsfw_content[i]:
-                try:
-                    falcon_is_safe = self.run_falcon_safety_checker(image)
-                except Exception as e:
-                    print(f"Error running safety checker: {e}")
-                    falcon_is_safe = False
-                if not falcon_is_safe:
-                    print(f"NSFW content detected in image {i}")
-                    continue
-            output_path = f"/tmp/out-{i}.{output_format}"
-            if output_format != "png":
-                image.save(output_path, quality=output_quality, optimize=True)
-            else:
-                image.save(output_path)
-            output_paths.append(Path(output_path))
+        # output_paths = []
+        # for i, image in enumerate(output.images):
+        #     if has_nsfw_content is not None and has_nsfw_content[i]:
+        #         try:
+        #             falcon_is_safe = self.run_falcon_safety_checker(image)
+        #         except Exception as e:
+        #             print(f"Error running safety checker: {e}")
+        #             falcon_is_safe = False
+        #         if not falcon_is_safe:
+        #             print(f"NSFW content detected in image {i}")
+        #             continue
+        #     output_path = f"/tmp/out-{i}.{output_format}"
+        #     if output_format != "png":
+        #         image.save(output_path, quality=output_quality, optimize=True)
+        #     else:
+        #         image.save(output_path)
+        #     output_paths.append(Path(output_path))
 
-        if len(output_paths) == 0:
-            raise Exception(
-                "NSFW content detected. Try running it again, or try a different prompt."
-            )
+        # if len(output_paths) == 0:
+        #     raise Exception(
+        #         "NSFW content detected. Try running it again, or try a different prompt."
+        #     )
 
-        return output_paths
+        # return output_paths
 
     def load_single_lora(self, lora_url: str, model: str):
         # If no change, skip
@@ -536,7 +552,15 @@ class Predictor(BasePredictor):
         return result == "normal"
 
     def aspect_ratio_to_width_height(self, aspect_ratio: str) -> tuple[int, int]:
-        return ASPECT_RATIOS[aspect_ratio]
+        # Handle case where aspect_ratio is passed as FieldInfo
+        if hasattr(aspect_ratio, 'default'):
+            aspect_ratio = aspect_ratio.default
+        
+        # Get dimensions from ASPECT_RATIOS dictionary
+        dimensions = ASPECT_RATIOS.get(aspect_ratio)
+        if dimensions is None:
+            raise ValueError(f"Invalid aspect ratio: {aspect_ratio}")
+        return dimensions
 
 
 def download_base_weights(url: str, dest: Path):
