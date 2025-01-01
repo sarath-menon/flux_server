@@ -2,19 +2,29 @@ FROM runpod/base:0.6.2-cuda12.2.0
 
 LABEL authors="sarath_suresh"
 
-# Install dependencies
-RUN apt-get update
-RUN apt-get install -y libgl1-mesa-glx  git-lfs
+# Install all system dependencies together
+RUN apt-get update && \
+    apt-get install -y \
+    libgl1-mesa-glx \
+    git-lfs \
+    nvtop \
+    htop
 
-WORKDIR /workspace
-
-ARG CACHEBUST=1
-RUN git clone --recursive https://github.com/sarath-menon/flux_server
-WORKDIR /workspace/flux_server
+# Set up Python symlink
 RUN ln -s /usr/bin/python3 /usr/bin/python
-RUN python -m pip install -r requirements.txt
-RUN python -m pip install -r ai-toolkit/requirements.txt
 
-RUN apt-get install -y tmux nvtop htop
+# Set working directory
+WORKDIR /workspace/flux_server
 
-CMD ["python" "server.py"]
+# Copy only requirements files first
+COPY requirements.txt ai-toolkit/requirements.txt ./
+COPY ai-toolkit/requirements.txt ./ai-toolkit/
+
+# Copy the rest of the application
+COPY . .
+RUN chmod +x startup.sh
+
+WORKDIR /
+
+# Command to run with full path
+CMD ["/bin/bash", "-c", "pwd && /workspace/flux_server/startup.sh"]
