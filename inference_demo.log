@@ -1,9 +1,0 @@
-2025-01-01 11:21:15 INFO: Quantizing transformer
-2025-01-01 11:22:32 INFO: Loading quantized transformer weights
-2025-01-01 11:24:47 INFO: Quantizing transformer
-2025-01-01 11:24:47 INFO: Quantizing text_encoder_2
-2025-01-01 11:24:47 INFO: Loading quantized transformer weights
-2025-01-01 11:24:47 INFO: Creating pipeline
-2025-01-01 11:24:47 INFO: Generating image
-2025-01-01 11:26:49 INFO: Creating pipeline
-2025-01-01 11:26:49 INFO: Generating image

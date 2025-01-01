@@ -1,7 +1,6 @@
 import asyncio
 import base64
 from pathlib import Path
-import aiohttp
 from PIL import Image
 import io
 from typing import List
