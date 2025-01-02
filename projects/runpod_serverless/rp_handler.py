@@ -1,11 +1,14 @@
-
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
-from pathlib import Path
-import flux_server.train
+import os
 import logging
+import shutil
+from pathlib import Path
+
+import runpod
+from runpod.serverless.utils import rp_download, rp_cleanup
+from runpod.serverless.utils.rp_validator import validate
 from flux_server.custom_types import TrainingParams
 
-# Add logging configuration
+# Logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -13,65 +16,83 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+INPUT_SCHEMA = {
+    'zip_url': {
+        'type': str,
+        'required': True
+    },
+    'training_params': {
+        'type': dict,
+        'required': True
+    }
+}
 
-
-@app.get("/")
-async def root():
-    return {"status": "Flux server is running"}
-
-@app.post("/train")
-async def train_model(
-    file: UploadFile = File(...),
-    params: str = Form(...)
-):
-    logger.info(f"Received training request with file: {file.filename}")
+def run(job):
+    '''
+    RunPod handler for training requests
+    '''
+    job_input = job['input']
     
-    if not file.filename.endswith('.zip'):
-        logger.error(f"Invalid file format: {file.filename}")
-        raise HTTPException(status_code=400, detail="File must be a ZIP archive")
+    # Validate inputs
+    if 'errors' in (job_input := validate(job_input, INPUT_SCHEMA)):
+        return {'error': job_input['errors']}
+    job_input = job_input['validated_input']
 
-    # Parse JSON string into TrainingParams
-    try:
-        params_dict = TrainingParams.parse_raw(params)
-        logger.debug(f"Parsed training parameters: {params_dict}")
-    except Exception as e:
-        logger.error(f"Failed to parse parameters: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Invalid params format: {str(e)}")
 
-    # Save uploaded file
-    temp_path = Path("/tmp/input.zip")
-    try:
-        with temp_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        logger.info(f"Saved uploaded file to {temp_path}")
-    finally:
-        file.file.close()
+    allowed_extensions = [".jpg", ".jpeg", ".png", ".txt"]
+    dataset_dir = Path("input_images")
+    dataset_dir.mkdir(parents=True, exist_ok=True)
+
+    # Download input file
+    # temp_path = Path("/tmp/input.zip")
+    downloaded_input = rp_download.file(job_input['zip_url'])
 
     try:
-        # Convert params to dict and remove None values
-        params_dict = params_dict.dict(exclude_none=True)
-        logger.info("Starting training process")
+        for root, dirs, files in os.walk(downloaded_input['extracted_path']):
+            print(f"Files in {root}:")
+            print("Dirs:", dirs)
+            for file in files:
+                file_path = os.path.join(root, file)
+                if os.path.splitext(file_path)[1].lower() in allowed_extensions:
+                    shutil.copy(
+                        os.path.join(downloaded_input['extracted_path'], file_path),
+                        dataset_dir
+                    )
+        logger.info(f"Downloaded input files to {dataset_dir}")
+
+        # shutil.move(downloaded_file, temp_path)
+        # logger.info(f"Downloaded input file to {temp_path}")
+        
+        # Parse and validate training parameters
+        try:
+            params_dict = TrainingParams.parse_obj(job_input['training_params'])
+            params_dict = params_dict.dict(exclude_none=True)
+        except Exception as e:
+            logger.error(f"Failed to parse parameters: {str(e)}")
+            return {"error": f"Invalid training parameters: {str(e)}"}
         
         # Run training
-        output_path = train.handle_training(
-            input_images_path=str(temp_path),
+        import flux_server.train
+        logger.info("Starting training process")
+        output_path = flux_server.train.handle_training(
+            # input_images_path=str(temp_path),
             **params_dict
         )
         
-        logger.info(f"Training completed successfully. Output saved to {output_path}")
-        return {"status": "success", "output_path": str(output_path)}
-
+        logger.info(f"Training completed successfully. Output at {output_path}")
+        return {
+            "status": "success",
+            "output_path": str(output_path)
+        }
+        
     except Exception as e:
         logger.error(f"Training failed: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"error": str(e)}
     
     finally:
         # Cleanup
-        if temp_path.exists():
-            logger.debug(f"Cleaning up temporary file: {temp_path}")
-            temp_path.unlink()
+        # if temp_path.exists():
+        #     temp_path.unlink()
+        rp_cleanup.clean(['input_objects'])
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+runpod.serverless.start({"handler": run})

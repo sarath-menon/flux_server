@@ -87,8 +87,8 @@ class CustomJob(BaseJob):
 
 def clean_up():
     logout_wandb()
-    if INPUT_DIR.exists():
-        shutil.rmtree(INPUT_DIR)
+    # if INPUT_DIR.exists():
+    #     shutil.rmtree(INPUT_DIR)
     if OUTPUT_DIR.exists():
         shutil.rmtree(OUTPUT_DIR)
 
@@ -122,7 +122,7 @@ def download_weights():
         print(f"Downloaded base weights in {t2 - t1} seconds")
 
 def handle_training(
-    input_images_path: str,
+    # input_images_path: str,
     trigger_word: str = "TOK",
     autocaption: bool = False,
     autocaption_prefix: Optional[str] = None,
@@ -181,8 +181,8 @@ def handle_training(
         wandb_project, wandb_entity, wandb_run
     )
 
-    # download_weights()
-    extract_zip(Path(input_images_path), INPUT_DIR)
+    # # download_weights()
+    # extract_zip(Path(input_images_path), INPUT_DIR)
 
     if not trigger_word:
         logger.debug("No trigger word provided, removing from config")
@@ -306,7 +306,6 @@ def setup_wandb(wandb_api_key, *args):
 def handle_captioning(autocaption, prefix, suffix):
     captioner = Captioner()
     if autocaption and not captioner.all_images_are_captioned(INPUT_DIR):
-        captioner.load_models()
         captioner.caption_images(INPUT_DIR, prefix, suffix)
 
     del captioner
