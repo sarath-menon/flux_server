@@ -7,10 +7,9 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-torch="^2.4.1"
+torch="^2.4.0"
 torchvision="^0.19.1"
 safetensors="0.4.4"
-diffusers="0.30.0"
 transformers="4.44.0"
 lycoris-lora="1.8.3"
 flatten-json="0.1.14"
@@ -42,6 +41,7 @@ runpod = "^1.7.7"
 pydantic = "^2.10.4"
 wandb = "^0.19.1"
 fastapi = "^0.115.6"
+diffusers = "^0.32.1"
 
 [build-system]
 requires = ["poetry-core"]

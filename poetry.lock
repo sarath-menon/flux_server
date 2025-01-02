@@ -827,13 +827,13 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "diffusers"
-version = "0.30.0"
+version = "0.32.1"
 description = "State-of-the-art diffusion in PyTorch and JAX."
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "diffusers-0.30.0-py3-none-any.whl", hash = "sha256:114194eb61498aff06243ade750fca6fbc179ca9df68923bb175b70030bed495"},
-    {file = "diffusers-0.30.0.tar.gz", hash = "sha256:57acd59cab035f62bde1108fc4c93e76e6988a5b3f8ae9f06051146c1cecb2aa"},
+    {file = "diffusers-0.32.1-py3-none-any.whl", hash = "sha256:ab2ed6efe9dd2364db55b94fae453ff149dc06693ec99702cadfbeeaaa00c9c1"},
+    {file = "diffusers-0.32.1.tar.gz", hash = "sha256:d48c19a4bce612d225f857e2e5d4f6ee003b88234af46b44c20119ee23f1568c"},
 ]
 
 [package.dependencies]
@@ -5210,4 +5210,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "42be8d283558cd3ab16a418862c62eb3ea161c6fcdca8740ebba83e8759ac8bc"
+content-hash = "af4cbf29daea5f6cb9d25c91ffc6eacaa1fe4b45e903eeed581f5de8196945e3"

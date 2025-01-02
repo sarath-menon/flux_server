@@ -3,6 +3,7 @@
 ## Install
 ```
 git clone https://github.com/sarath-menon/flux_server.git --recurse-submodules
+cd flux_server
 chmod +x startup.sh 
 ./startup.sh
 ```
@@ -39,4 +40,9 @@ python projects/runpod_serverless/rp_handler.py --rp_serve_api
 # Misc
 ```
 docker builder prune
+```
+
+set pip cache dir
+```
+pip config set global.cache-dir "/workspace/.cache/pip"
 ```
