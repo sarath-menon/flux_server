@@ -40,6 +40,7 @@ sentencepiece="0.2.0"
 peft="0.13.0"
 lion-pytorch="0.2.2"
 openai="1.58.1"
+runpod = "^1.7.7"
 
 [build-system]
 requires = ["poetry-core"]
