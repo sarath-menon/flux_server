@@ -28,7 +28,12 @@ docker push sarathmenon1999/flux_server_runpod:0.01
 
 ## Testing
 ```
- python projects/runpod_serverless/rp_handler.py
+python projects/runpod_serverless/rp_handler.py
+```
+
+With fastapi server
+```
+python projects/runpod_serverless/rp_handler.py --rp_serve_api
 ```
 
 # Misc

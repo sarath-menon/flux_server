@@ -31,5 +31,9 @@ INPUT_SCHEMA = {
     'training_params': {
         'type': dict,
         'required': True
+    },
+    'base64_images': {
+        'type': list,
+        'required': True
     }
 }

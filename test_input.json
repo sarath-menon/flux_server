@@ -11,6 +11,6 @@
         "lora_rank": 16,
         "caption_dropout_rate": 0.05,
         "optimizer": "adamw8bit"
-      }
-    }
+      },
+      "base64_images": {}}
 }
