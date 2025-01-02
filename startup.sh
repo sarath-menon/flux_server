@@ -8,7 +8,7 @@ echo 'export PATH="/root/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc 
 
 # install dependencies for ai-toolkit
-python -m pip install -r src/ai-toolkit/requirements.txt
+python -m pip install -r flux_server/ai-toolkit/requirements.txt
 
 # install poetry dependencies
 poetry config virtualenvs.create false

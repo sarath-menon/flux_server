@@ -19,7 +19,6 @@ WORKDIR /home/flux_server
 # Copy the application
 COPY . .
 RUN chmod +x startup.sh
-RUN export HF_HOME="/workspace/models"
 
 WORKDIR /
 
