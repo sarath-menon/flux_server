@@ -14,13 +14,14 @@ RUN apt-get update && \
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # Set working directory
-WORKDIR /home/flux_server
-
+# WORKDIR /home/flux_server
+# COPY ../../ .
 # Copy the application
-COPY ../../ .
-RUN chmod +x startup.sh
+WORKDIR /home
+RUN git clone https://github.com/sarath-menon/flux_server.git --recurse-submodules
+RUN chmod +x /home/flux_server/projects/fastapi_server/startup.sh
 
 WORKDIR /
 
 # Command to run with full path
-CMD ["/bin/bash", "-c", "pwd && /home/flux_server/startup.sh"]
+CMD ["/bin/bash", "-c", "pwd && /home/flux_server/projects/fastapi_server/startup.sh"]

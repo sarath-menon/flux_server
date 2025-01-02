@@ -10,7 +10,7 @@ chmod +x startup.sh
 ## Docker build
 
 ```
-docker build -t flux_server .
+docker build -t flux_server_fastapi projects/fastapi_server
 ```
 
 ```
