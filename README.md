@@ -1,5 +1,12 @@
 # Flux server
 
+## Install
+```
+git clone https://github.com/sarath-menon/flux_server.git --recurse-submodules
+chmod +x startup.sh 
+./startup.sh
+```
+
 ## Docker build
 
 ```

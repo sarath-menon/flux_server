@@ -6,12 +6,12 @@ LABEL authors="sarath_suresh"
 RUN apt-get update && \
     apt-get install -y \
     libgl1-mesa-glx \
-    git-lfs \
-    nvtop \
-    htop
+    git-lfs 
 
 # Set up Python symlink
 RUN ln -s /usr/bin/python3 /usr/bin/python
+
+RUN pip install runpod
 
 # Set working directory
 WORKDIR /home/flux_server

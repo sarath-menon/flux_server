@@ -1,8 +1,9 @@
 
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from pathlib import Path
-import train
-import loggin
-from types import *
+import flux_server.train
+import logging
+from flux_server.custom_types import TrainingParams
 
 # Add logging configuration
 logging.basicConfig(

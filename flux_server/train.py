@@ -5,7 +5,7 @@ import subprocess
 import logging
 
 # Add necessary paths
-sys.path.append("ai-toolkit")
+sys.path.append("flux_server/ai-toolkit")
 
 import time
 from pathlib import Path
@@ -14,22 +14,21 @@ from zipfile import ZipFile, is_zipfile
 
 import torch
 from huggingface_hub import HfApi
+
+from .wandb_client import WeightsAndBiasesClient, logout_wandb
+from .layer_match import match_layers_to_optimize, available_layers_to_optimize
+from .submodule_patches import patch_submodules
+
+from .caption import Captioner
 from jobs import BaseJob
 from toolkit.config import get_config
 from extensions_built_in.sd_trainer.SDTrainer import SDTrainer
-
-from src.caption import Captioner
-from wandb_client import WeightsAndBiasesClient, logout_wandb
-from layer_match import match_layers_to_optimize, available_layers_to_optimize
 
 # Set environment variables
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 os.environ["LANG"] = "en_US.UTF-8"
 
-
-
-from src.submodule_patches import patch_submodules
 patch_submodules()
 
 JOB_NAME = "flux_train_replicate"

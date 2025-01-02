@@ -6,7 +6,9 @@ LABEL authors="sarath_suresh"
 RUN apt-get update && \
     apt-get install -y \
     libgl1-mesa-glx \
-    git-lfs 
+    git-lfs \
+    nvtop \
+    htop
 
 # Set up Python symlink
 RUN ln -s /usr/bin/python3 /usr/bin/python
@@ -15,7 +17,7 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 WORKDIR /home/flux_server
 
 # Copy the application
-COPY . .
+COPY ../../ .
 RUN chmod +x startup.sh
 
 WORKDIR /

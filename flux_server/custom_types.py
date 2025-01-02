@@ -1,6 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from pydantic import BaseModel
-from typing import Optional
 from typing import Optional
 
 class TrainingParams(BaseModel):
@@ -18,7 +16,7 @@ class TrainingParams(BaseModel):
     cache_latents_to_disk: bool = False
     layers_to_optimize_regex: Optional[str] = None
     wandb_api_key: Optional[str] = None
-    wandb_project: str = train.JOB_NAME
+    wandb_project: str = "demo_project"
     wandb_run: Optional[str] = None
     wandb_entity: Optional[str] = None
     wandb_sample_interval: int = 100

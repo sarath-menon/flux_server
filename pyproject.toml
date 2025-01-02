@@ -4,12 +4,11 @@ version = "0.1.0"
 description = ""
 authors = ["Sarath S Menon <sarathmenon.downey@gmail.com>"]
 readme = "README.md"
-package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.12"
-torch="2.4.1"
-torchvision="0.19.1"
+python = "^3.11"
+torch="^2.4.1"
+torchvision="^0.19.1"
 safetensors="0.4.4"
 diffusers="0.30.0"
 transformers="4.44.0"
@@ -25,7 +24,6 @@ toml="0.10.2"
 albumentations="1.4.3"
 opencv-python="4.10.0.84"
 pillow="10.4.0"
-pydantic="1.10.17"
 omegaconf="2.3.0"
 open-clip-torch="2.26.1"
 timm="1.0.8"
@@ -41,6 +39,9 @@ peft="0.13.0"
 lion-pytorch="0.2.2"
 openai="1.58.1"
 runpod = "^1.7.7"
+pydantic = "^2.10.4"
+wandb = "^0.19.1"
+fastapi = "^0.115.6"
 
 [build-system]
 requires = ["poetry-core"]
