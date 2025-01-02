@@ -1,10 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
-from pydantic import BaseModel
-from typing import Optional
-import shutil
+
 from pathlib import Path
-import core
-import logging
+import train
+import loggin
+from types import *
 
 # Add logging configuration
 logging.basicConfig(
@@ -16,27 +14,6 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-class TrainingParams(BaseModel):
-    trigger_word: str = "TOK"
-    autocaption: bool = False
-    autocaption_prefix: Optional[str] = None
-    autocaption_suffix: Optional[str] = None
-    steps: int = 1000
-    learning_rate: float = 0.0004
-    batch_size: int = 1
-    resolution: str = "512,768,1024"
-    lora_rank: int = 16
-    caption_dropout_rate: float = 0.05
-    optimizer: str = "adamw8bit"
-    cache_latents_to_disk: bool = False
-    layers_to_optimize_regex: Optional[str] = None
-    wandb_api_key: Optional[str] = None
-    wandb_project: str = core.JOB_NAME
-    wandb_run: Optional[str] = None
-    wandb_entity: Optional[str] = None
-    wandb_sample_interval: int = 100
-    wandb_sample_prompts: Optional[str] = None
-    wandb_save_interval: int = 100
 
 @app.get("/")
 async def root():
@@ -76,7 +53,7 @@ async def train_model(
         logger.info("Starting training process")
         
         # Run training
-        output_path = core.handle_training(
+        output_path = train.handle_training(
             input_images_path=str(temp_path),
             **params_dict
         )

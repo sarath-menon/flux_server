@@ -6,8 +6,6 @@ import logging
 
 # Add necessary paths
 sys.path.append("ai-toolkit")
-sys.path.append("LLaVA")
-
 
 import time
 from pathlib import Path
@@ -20,7 +18,7 @@ from jobs import BaseJob
 from toolkit.config import get_config
 from extensions_built_in.sd_trainer.SDTrainer import SDTrainer
 
-from caption import Captioner
+from src.caption import Captioner
 from wandb_client import WeightsAndBiasesClient, logout_wandb
 from layer_match import match_layers_to_optimize, available_layers_to_optimize
 
@@ -31,7 +29,7 @@ os.environ["LANG"] = "en_US.UTF-8"
 
 
 
-from submodule_patches import patch_submodules
+from src.submodule_patches import patch_submodules
 patch_submodules()
 
 JOB_NAME = "flux_train_replicate"
