@@ -6,7 +6,8 @@ from pathlib import Path
 import runpod
 from runpod.serverless.utils import rp_download, rp_cleanup
 from runpod.serverless.utils.rp_validator import validate
-from flux_server.custom_types import TrainingParams
+from flux_server.custom_types import TrainingParams, INPUT_SCHEMA
+import flux_server.train
 
 # Logging configuration
 logging.basicConfig(
@@ -15,17 +16,6 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 logger = logging.getLogger(__name__)
-
-INPUT_SCHEMA = {
-    'zip_url': {
-        'type': str,
-        'required': True
-    },
-    'training_params': {
-        'type': dict,
-        'required': True
-    }
-}
 
 def run(job):
     '''
@@ -72,7 +62,6 @@ def run(job):
             return {"error": f"Invalid training parameters: {str(e)}"}
         
         # Run training
-        import flux_server.train
         logger.info("Starting training process")
         output_path = flux_server.train.handle_training(
             # input_images_path=str(temp_path),

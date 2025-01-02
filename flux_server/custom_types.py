@@ -22,3 +22,14 @@ class TrainingParams(BaseModel):
     wandb_sample_interval: int = 100
     wandb_sample_prompts: Optional[str] = None
     wandb_save_interval: int = 100
+
+INPUT_SCHEMA = {
+    'zip_url': {
+        'type': str,
+        'required': True
+    },
+    'training_params': {
+        'type': dict,
+        'required': True
+    }
+}
