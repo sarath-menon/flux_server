@@ -33,7 +33,7 @@ INPUT_SCHEMA = {
         'required': True
     },
     'base64_images': {
-        'type': list,
+        'type': dict,
         'required': True
     }
 }
