@@ -7,16 +7,20 @@ chmod +x startup.sh
 ./startup.sh
 ```
 
-## Docker build
+# Docker build
 
+## Fastapi server 
 ```
 docker build -t flux_server_fastapi projects/fastapi_server
+docker tag flux_server_fastapi sarathmenon1999/flux_server_fastapi:0.01
+docker push sarathmenon1999/flux_server_fastapi:0.01
 ```
 
+## Runpod worker
 ```
-docker run -d --name flux_server -p 8082:8082 clicking_server
-docker tag flux_server sarathmenon1999/flux_server:0.4
-docker push sarathmenon1999/flux_server:0.4
+docker build -t flux_server_runpod projects/runpod_server
+docker tag flux_server_runpod sarathmenon1999/flux_server_runpod:0.01
+docker push sarathmenon1999/flux_server_runpod:0.01
 ```
 
 ```
