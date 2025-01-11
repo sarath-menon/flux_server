@@ -1,4 +1,4 @@
-FROM runpod/base:0.6.2-cuda12.2.0
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 LABEL authors="sarath_suresh"
 
