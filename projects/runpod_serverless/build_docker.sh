@@ -9,13 +9,8 @@ else
     echo $VERSION > $VERSION_FILE
 fi
 
-# Build and push FastAPI server
-docker build -t flux_server_fastapi projects/fastapi_server
-docker tag flux_server_fastapi sarathmenon1999/flux_server_fastapi:${VERSION}
-docker push sarathmenon1999/flux_server_fastapi:${VERSION}
-
 # Build and push Runpod worker
-docker build -t flux_server_runpod projects/runpod_server
+docker build -t flux_server_runpod projects/runpod_serverless
 docker tag flux_server_runpod sarathmenon1999/flux_server_runpod:${VERSION}
 docker push sarathmenon1999/flux_server_runpod:${VERSION}
 
