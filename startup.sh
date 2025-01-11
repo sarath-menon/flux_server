@@ -18,5 +18,8 @@ python -m pip install -r flux_server/ai-toolkit/requirements.txt
 poetry config virtualenvs.create false
 poetry install
 
-# start fastapi server
-python projects/fastapi_server/main.py
+# # start fastapi server
+# python projects/fastapi_server/main.py
+
+# start runpod worker
+python projects/runpod_serverless/rp_handler.py
