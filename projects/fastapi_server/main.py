@@ -1,9 +1,10 @@
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from pathlib import Path
-import flux_server.train
+import flux_server.train as train
 import logging
 from flux_server.custom_types import TrainingParams
+import shutil
 
 # Add logging configuration
 logging.basicConfig(
@@ -53,10 +54,10 @@ async def train_model(
         params_dict = params_dict.dict(exclude_none=True)
         logger.info("Starting training process")
         
-        # Run training
-        output_path = train.handle_training(
-            input_images_path=str(temp_path),
-            **params_dict
+        # # Run training
+        # output_path = train.handle_training(
+        #     # input_images_path=str(temp_path),
+        #     **params_dict
         )
         
         logger.info(f"Training completed successfully. Output saved to {output_path}")

@@ -27,7 +27,22 @@ docker tag flux_server_runpod sarathmenon1999/flux_server_runpod:0.01
 docker push sarathmenon1999/flux_server_runpod:0.01
 ```
 
-## Testing
+# Testing
+
+## Fastapi server 
+
+Sample CURL request 
+```
+curl -X POST "http://localhost:8000/train" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@./data.zip" \
+  -F 'params={"trigger_word":"TOK","autocaption":true,"steps":1000,"learning_rate":0.0004,"batch_size":1,"resolution":"512,768,1024","lora_rank":16,"caption_dropout_rate":0.05,"optimizer":"adamw8bit"}'
+```
+
+
+## Runpod workser (server)
+
 ```
 python projects/runpod_serverless/rp_handler.py
 ```
