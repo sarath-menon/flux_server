@@ -9,10 +9,11 @@ source ~/.bashrc
 
 # set ache directry for pip and huggingface to runpod network volume
 pip config set global.cache-dir "/workspace/.cache/pip"
+poetry config cache-dir "/workspace/.cache/pypoetry"
 export HF_HOME="/workspace/models"
 
-# install dependencies for ai-toolkit
-python -m pip install -r flux_server/ai-toolkit/requirements.txt
+# # install dependencies for ai-toolkit
+# python -m pip install -r flux_server/ai-toolkit/requirements.txt
 
 # install poetry dependencies
 poetry config virtualenvs.create false
