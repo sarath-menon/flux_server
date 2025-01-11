@@ -1,6 +1,21 @@
  #!/bin/bash
 
+echo "Running startup.sh"
+
 cd /home/flux_server/
+
+# check if huggingface token and openai api key is set 
+if [ -z "$HUGGINGFACE_TOKEN" ]; then
+    echo "HUGGINGFACE_TOKEN is not set"
+else
+    echo "HUGGINGFACE_TOKEN is set"
+fi
+
+if [ -z "$OPENAI_API_KEY" ]; then
+    echo "OPENAI_API_KEY is not set"
+else
+    echo "OPENAI_API_KEY is set"
+fi
 
 # install poetry
 curl -sSL https://install.python-poetry.org | python3 -
