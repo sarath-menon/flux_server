@@ -8,9 +8,6 @@ RUN apt-get update && \
     libgl1-mesa-glx \
     git-lfs 
 
-# Set up Python symlink
-RUN ln -s /usr/bin/python3 /usr/bin/python
-
 RUN pip install runpod
 
 WORKDIR /home
