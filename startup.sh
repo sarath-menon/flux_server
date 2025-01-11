@@ -7,7 +7,7 @@ curl -sSL https://install.python-poetry.org | python3 -
 export PATH="/root/.local/bin:$PATH"
 source ~/.bashrc 
 
-# set ache directry for pip and huggingface to runpod network volume
+# set cache directry for pip, huggingface to runpod network volume
 pip config set global.cache-dir "/workspace/.cache/pip"
 poetry config cache-dir "/workspace/.cache/pypoetry"
 export HF_HOME="/workspace/models"
