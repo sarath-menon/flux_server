@@ -24,29 +24,25 @@ response = requests.post(
 print(response)
 
 try:
-    result = json.loads(response.text)
-    for key, value in result.items():
-        print(f"{key}")
-    
-    # Check if there's an error
-    if "error" in result:
-        print(f"Error: {result['error']}")
-        
-    # Process image data
-    for item in result:
-        if item["type"] == "image":
-            filename = item["filename"]
-            base64_data = item["content"]
+    response = json.loads(response.text)
+    print("Status: ", response["status"])
+    outputs = response["output"]
+
+    for output in outputs:
+        if "type" in output and output["type"] == "image":
+            print(output)
+            filename = output["filename"]
+            base64_data = output["content"]
             print(f"Received image: {filename}")
             
-        try:
-            # Save the image
-            image_path = os.path.join(output_dir, filename)
-            with open(image_path, "wb") as f:
-                f.write(base64.b64decode(base64_data))
-            print(f"Saved image: {filename}")
-        except Exception as e:
-            print(f"Error saving image {filename}: {e}")
+            try:
+                # Save the image
+                image_path = os.path.join(output_dir, filename)
+                with open(image_path, "wb") as f:
+                    f.write(base64.b64decode(base64_data))
+                print(f"Saved image: {filename}")
+            except Exception as e:
+                print(f"Error saving image {filename}: {e}")
         
 except json.JSONDecodeError as e:
     print(f"Error decoding JSON: {e}")

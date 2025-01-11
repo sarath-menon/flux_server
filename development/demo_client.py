@@ -8,16 +8,7 @@ data = {
 }
 headers = {"Content-Type": "application/json"}
 
-# Stream the response
-r = requests.post('http://localhost:8006/runsync', 
-                 data=json.dumps(data), 
-                 headers=headers,
-                 stream=True)
+r = requests.post('http://localhost:8006/runsync', data=json.dumps(data), headers=headers)
 
-# Print each line as it's received
-for line in r.iter_lines():
-    if line:
-        # Decode the bytes to string and print
-        decoded_line = line.decode('utf-8')
-        print(decoded_line)
+print(r.text)
 
