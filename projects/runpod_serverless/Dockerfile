@@ -15,7 +15,7 @@ RUN pip install runpod
 
 WORKDIR /home
 RUN git clone https://github.com/sarath-menon/flux_server.git --recurse-submodules
-RUN chmod +x /home/flux_server/projects/runpod_serverless/startup.sh
+RUN chmod +x ./flux_server/projects/runpod_serverless/startup.sh
 
 WORKDIR /
 
