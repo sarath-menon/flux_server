@@ -21,7 +21,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def run(job):
+async def async_handler(job):
     '''
     RunPod async handler for training requests
     '''
@@ -29,53 +29,58 @@ async def run(job):
     
     # Validate inputs
     if 'errors' in (job_input := validate(job_input, INPUT_SCHEMA)):
-        return {'error': job_input['errors']}
+        yield {'error': job_input['errors']}
+        return
 
     job_input = job_input['validated_input']
 
     if not job_input.get('base64_images') and not job_input.get('zip_url'):          
-        return {'error': 'Images must be provided as base64 strings or a ZIP file URL'} 
+        yield {'error': 'Images must be provided as base64 strings or a ZIP file URL'}
+        return
 
     dataset_dir = Path("input_images")
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create tasks for image processing
-    tasks = []
-    if 'zip_url' in job_input:
-        tasks.append(asyncio.create_task(zip_images(job_input['zip_url'], dataset_dir)))
+    try:
+        # Create tasks for image processing
+        tasks = []
+        if 'zip_url' in job_input:
+            tasks.append(asyncio.create_task(zip_images(job_input['zip_url'], dataset_dir)))
 
-    if 'base64_images' in job_input:    
-        tasks.append(asyncio.create_task(save_base64_images(job_input['base64_images'], dataset_dir)))
-    
-    # Wait for all image processing tasks to complete
-    if tasks:
-        await asyncio.gather(*tasks)
+        if 'base64_images' in job_input:    
+            tasks.append(asyncio.create_task(save_base64_images(job_input['base64_images'], dataset_dir)))
         
-    # Parse and validate training parameters
-    try:
-        params_dict = TrainingParams.parse_obj(job_input['training_params'])
-        params_dict = params_dict.dict(exclude_none=True)
-    except Exception as e:
-        logger.error(f"Failed to parse parameters: {str(e)}")
-        return {"error": f"Invalid training parameters: {str(e)}"}
-    
-    # Run training
-    try:
+        # Wait for all image processing tasks to complete
+        if tasks:
+            yield {"status": "processing", "message": "Processing input images..."}
+            await asyncio.gather(*tasks)
+            
+        # Parse and validate training parameters
+        try:
+            params_dict = TrainingParams.parse_obj(job_input['training_params'])
+            params_dict = params_dict.dict(exclude_none=True)
+        except Exception as e:
+            logger.error(f"Failed to parse parameters: {str(e)}")
+            yield {"error": f"Invalid training parameters: {str(e)}"}
+            return
+        
+        # Run training
         logger.info("Starting training process")
+        yield {"status": "processing", "message": "Starting training process..."}
+        
         output_path = await flux_server.train.handle_training(
-            # input_images_path=str(temp_path),
             **params_dict
         )
         
         logger.info(f"Training completed successfully. Output at {output_path}")
-        return {
+        yield {
             "status": "success",
             "output_path": str(output_path)
         }
-            
+                
     except Exception as e:
         logger.error(f"Training failed: {str(e)}", exc_info=True)
-        return {"error": str(e)}
+        yield {"error": str(e)}
     
     finally:
         # Cleanup
@@ -84,6 +89,6 @@ async def run(job):
         shutil.rmtree(dataset_dir)
 
 runpod.serverless.start({
-    "handler": run,
-    "return_aggregate_stream": True
+    "handler": async_handler,
+    "return_aggregate_stream": False  # Set to False to stream individual results
 })
