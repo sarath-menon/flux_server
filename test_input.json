@@ -13,5 +13,8 @@
       "optimizer": "adamw8bit"
     },
     "base64_images": {}
+  },
+  "policy": {
+    "executionTimeout": 7200000
   }
 }
