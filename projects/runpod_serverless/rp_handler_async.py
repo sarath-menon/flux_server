@@ -24,6 +24,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 async def monitor_output_directory(path, timeout=300):  # 5 minutes timeout
     event_handler = OutputFileHandler()
     observer = Observer()
@@ -50,7 +51,6 @@ async def monitor_output_directory(path, timeout=300):  # 5 minutes timeout
                                     "filename": Path(file_path).name,
                                     "content": image_data
                                 }
-                                return
                         except Exception as e:
                             msg = f"Failed to process image {file_path}: {str(e)}"
                             logger.error(msg)
@@ -106,10 +106,20 @@ async def run(job):
         
         # Start monitoring the output directory
         output_dir = Path("./output")
-        output_dir.mkdir(exist_ok=True)
+        job_dir = output_dir / params.job_name
+
+        # Delete existing job directory and create new one
+        if job_dir.exists():
+            logger.info(f"Deleting existing job directory: {job_dir}")
+            shutil.rmtree(job_dir)
+
+        # Create new job directory
+        samples_dir = job_dir / "samples"
+        job_dir.mkdir(parents=True, exist_ok=True)
+        samples_dir.mkdir(exist_ok=True)
         
         # Create monitoring task
-        monitor_task = monitor_output_directory(output_dir)
+        monitor_task = monitor_output_directory(samples_dir)
         
         # Run training
         training_task = asyncio.create_task(
@@ -147,14 +157,12 @@ async def run(job):
 
 async def handler(job):
     """
-    Wrapper handler that consumes the async generator
+    Wrapper handler that streams results directly
     """
-    results = []
     async for result in run(job):
-        results.append(result)
-    return results
+        yield result  # Directly yield each result instead of aggregating
 
 runpod.serverless.start({
     "handler": handler,
-    "return_aggregate_stream": False  # Changed to False since we're aggregating in the handler
+    "return_aggregate_stream": True  # Changed to True to enable streaming
 })

@@ -5,12 +5,14 @@ import subprocess
 import logging
 import asyncio
 from functools import partial
+from tqdm import tqdm
+from dataclasses import dataclass
+from pathlib import Path
 
 # Add necessary paths
 sys.path.append("flux_server/ai-toolkit")
 
 import time
-from pathlib import Path
 from typing import Optional, OrderedDict
 from zipfile import ZipFile, is_zipfile
 
@@ -22,9 +24,6 @@ from .layer_match import match_layers_to_optimize, available_layers_to_optimize
 from .submodule_patches import patch_submodules
 
 from .caption import Captioner
-from jobs import BaseJob
-from toolkit.config import get_config
-from extensions_built_in.sd_trainer.SDTrainer import SDTrainer
 from .custom_types import TrainingParams
 
 # Set environment variables
@@ -32,68 +31,31 @@ os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 os.environ["LANG"] = "en_US.UTF-8"
 
-patch_submodules()
 
-JOB_NAME = "flux_train_replicate"
-WEIGHTS_PATH = Path("./FLUX.1-dev")
-INPUT_DIR = Path("input_images")
-OUTPUT_DIR = Path("output")
-JOB_DIR = OUTPUT_DIR / JOB_NAME
+@dataclass
+class TrainingPaths:
+    job_name: str = "default_job"
+    weights_path: Path = Path("./FLUX.1-dev")
+    input_dir: Path = Path("./input_images")
+    output_dir: Path = Path("./output")
+    samples_dir: Path = Path("./testdata/harrison_ford")
+    
+    @property
+    def job_dir(self) -> Path:
+        return self.output_dir / self.job_name
+
+# Replace global variables with instance
+training_paths = TrainingPaths()
 
 logger = logging.getLogger(__name__)
 
-class CustomSDTrainer(SDTrainer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.seen_samples = set()
-        self.wandb = None
-
-    def hook_train_loop(self, batch):
-        loss_dict = super().hook_train_loop(batch)
-        if self.wandb:
-            self.wandb.log_loss(loss_dict, self.step_num)
-        return loss_dict
-
-    def sample(self, step=None, is_first=False):
-        super().sample(step=step, is_first=is_first)
-        output_dir = JOB_DIR / "samples"
-        all_samples = set([p.name for p in output_dir.glob("*.jpg")])
-        new_samples = all_samples - self.seen_samples
-        if self.wandb:
-            image_paths = [output_dir / p for p in sorted(new_samples)]
-            self.wandb.log_samples(image_paths, step)
-        self.seen_samples = all_samples
-
-    def post_save_hook(self, save_path):
-        super().post_save_hook(save_path)
-        lora_path = JOB_DIR / f"{JOB_NAME}.safetensors"
-        if not lora_path.exists():
-            lora_path = sorted(JOB_DIR.glob("*.safetensors"))[-1]
-        if self.wandb:
-            print(f"Saving weights to W&B: {lora_path.name}")
-            self.wandb.save_weights(lora_path)
-
-class CustomJob(BaseJob):
-    def __init__(self, config: OrderedDict, wandb_client: Optional[WeightsAndBiasesClient] = None):
-        super().__init__(config)
-        self.device = self.get_conf("device", "cpu")
-        self.process_dict = {"custom_sd_trainer": CustomSDTrainer}
-        self.load_processes(self.process_dict)
-        for process in self.process:
-            process.wandb = wandb_client
-
-    def run(self):
-        super().run()
-        print(f"Running {len(self.process)} process{'' if len(self.process) == 1 else 'es'}")
-        for process in self.process:
-            process.run()
 
 def clean_up():
     logout_wandb()
-    # if INPUT_DIR.exists():
-    #     shutil.rmtree(INPUT_DIR)
-    if OUTPUT_DIR.exists():
-        shutil.rmtree(OUTPUT_DIR)
+    # if training_paths.input_dir.exists():
+    #     shutil.rmtree(training_paths.input_dir)
+    if training_paths.output_dir.exists():
+        shutil.rmtree(training_paths.output_dir)
 
 def extract_zip(input_images: Path, input_dir: Path):
     if not is_zipfile(input_images):
@@ -113,13 +75,13 @@ def extract_zip(input_images: Path, input_dir: Path):
     logger.info(f"Extracted {image_count} files from zip to {input_dir}")
 
 def download_weights():
-    if not WEIGHTS_PATH.exists():
+    if not training_paths.weights_path.exists():
         t1 = time.time()
         subprocess.check_output([
             "pget",
             "-xf",
             "https://weights.replicate.delivery/default/black-forest-labs/FLUX.1-dev/files.tar",
-            str(WEIGHTS_PATH.parent),
+            str(training_paths.weights_path.parent),
         ])
         t2 = time.time()
         print(f"Downloaded base weights in {t2 - t1} seconds")
@@ -129,16 +91,48 @@ async def handle_training(
 ) -> Path:
     """Handle the training process with parameters from TrainingParams model"""
     logger.info("Starting training process")
+
+    training_paths.job_name = training_params.job_name
     
     # Add mock handling at the start
     if training_params.mock_training:
         logger.info("Using mock training mode")
-        mock_path = Path(training_params.mock_output_path)
-        # Create a mock tar file
-        if not mock_path.parent.exists():
-            mock_path.parent.mkdir(parents=True)
-        os.system(f"touch {mock_path}")
-        return mock_path
+        delay = training_params.mock_training_samples_interval
+        
+        # Create output directory structure
+        mock_samples_dir = training_paths.job_dir / "samples"
+        mock_samples_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Copy sample images with delay
+        if not training_paths.samples_dir.exists():
+            logger.error("SAMPLES_DIR does not exist, skipping sample image generation.")
+            return Path(mock_samples_dir)
+
+        # Get all image files in samples directory
+        sample_files = []
+        for ext in ["*.png", "*.jpg", "*.jpeg"]:
+            sample_files.extend(list(training_paths.samples_dir.glob(ext)))
+        logger.info(f"Found {len(sample_files)} sample files in {training_paths.samples_dir}")
+
+        # Create progress bar
+        pbar = tqdm(total=len(sample_files), desc="Generating mock samples")
+        
+        for i, sample_file in enumerate(sample_files, 1):
+            output_file = mock_samples_dir / f"sample_{i:04d}.png"
+            shutil.copy2(sample_file, output_file)
+            await asyncio.sleep(delay)
+            pbar.update(1)
+            
+        pbar.close()
+        
+        return Path(mock_samples_dir)
+
+    from jobs import BaseJob
+    from toolkit.config import get_config
+    from extensions_built_in.sd_trainer.SDTrainer import SDTrainer
+    from .custom_trainers import CustomJob, CustomSDTrainer
+    
+    patch_submodules()
 
     logger.debug(f"Training parameters: trigger_word={training_params.trigger_word}, steps={training_params.steps}, learning_rate={training_params.learning_rate}")
     
@@ -205,7 +199,7 @@ async def handle_training(
     process_output_files()
 
     logger.info(f"Creating output archive at {output_path}")
-    os.system(f"tar -cvf {output_path} {JOB_DIR}")
+    os.system(f"tar -cvf {output_path} {training_paths.job_dir}")
     logger.info("Training completed successfully")
     return output_path
 
@@ -217,11 +211,11 @@ def create_training_config(trigger_word, steps, learning_rate, batch_size, resol
         {
             "job": "custom_job",
             "config": {
-                "name": JOB_NAME,
+                "name": training_paths.job_name,
                 "process": [
                     {
                         "type": "custom_sd_trainer",
-                        "training_folder": str(OUTPUT_DIR),
+                        "training_folder": str(training_paths.output_dir),
                         "device": "cuda:0",
                         "trigger_word": trigger_word,
                         "network": {
@@ -238,7 +232,7 @@ def create_training_config(trigger_word, steps, learning_rate, batch_size, resol
                         },
                         "datasets": [
                             {
-                                "folder_path": str(INPUT_DIR),
+                                "folder_path": str(training_paths.input_dir),
                                 "caption_ext": "txt",
                                 "caption_dropout_rate": caption_dropout_rate,
                                 "shuffle_tokens": False,
@@ -314,29 +308,29 @@ def handle_captioning(autocaption, prefix, suffix):
     torch.cuda.empty_cache()
 
 def process_output_files():
-    lora_file = JOB_DIR / f"{JOB_NAME}.safetensors"
-    lora_file.rename(JOB_DIR / "lora.safetensors")
+    lora_file = training_paths.job_dir / f"{training_paths.job_name}.safetensors"
+    lora_file.rename(training_paths.job_dir / "lora.safetensors")
 
-    samples_dir = JOB_DIR / "samples"
+    samples_dir = training_paths.job_dir / "samples"
     if samples_dir.exists():
         shutil.rmtree(samples_dir)
 
     # Remove any intermediate lora paths
-    lora_paths = JOB_DIR.glob("*.safetensors")
+    lora_paths = training_paths.job_dir.glob("*.safetensors")
     for path in lora_paths:
         if path.name != "lora.safetensors":
             path.unlink()
 
     # Optimizer is used to continue training, not needed in output
-    optimizer_file = JOB_DIR / "optimizer.pt"
+    optimizer_file = training_paths.job_dir / "optimizer.pt"
     if optimizer_file.exists():
         optimizer_file.unlink()
 
     # Copy generated captions to the output tar
-    captions_dir = JOB_DIR / "captions"
+    captions_dir = training_paths.job_dir / "captions"
     captions_dir.mkdir(exist_ok=True)
-    for caption_file in INPUT_DIR.glob("*.txt"):
-        shutil.copy(caption_file, captions_dir) 
+    for caption_file in training_paths.input_dir.glob("*.txt"):
+        shutil.copy(caption_file, captions_dir)
 
 def handle_training_sync(
     training_params: TrainingParams,

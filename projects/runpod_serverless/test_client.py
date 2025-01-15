@@ -15,7 +15,10 @@ payload = {
             "lora_rank": 16,
             "caption_dropout_rate": 0.05,
             "optimizer": "adamw8bit",
-            "mock_training": True
+            "mock_training": True,
+            "mock_training_samples_interval": 2,
+            "job_name": "test_job"
+
         },
         "base64_images": {}
     }
@@ -24,17 +27,23 @@ payload = {
 def send_request(url, data):
     try:
         headers = {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive'
         }
         
-        # Send POST request
-        response = requests.post(url, json=data, headers=headers)
-        
-        # Check if request was successful
-        response.raise_for_status()
-        
-        # Return response data
-        return response.json()
+        # Send POST request with stream=True
+        with requests.post(url, json=data, headers=headers, stream=True) as response:
+            response.raise_for_status()
+            
+            # Process each line as it comes in
+            for line in response.iter_lines():
+                if line:
+                    result = json.loads(line)
+                    print("Received streaming response:")
+                    print(json.dumps(result, indent=2))
+                    print("-" * 50)
     
     except requests.exceptions.RequestException as e:
         print(f"Error occurred: {e}")

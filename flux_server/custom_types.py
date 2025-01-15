@@ -23,8 +23,9 @@ class TrainingParams(BaseModel):
     wandb_sample_prompts: Optional[str] = None
     wandb_save_interval: int = 100
     mock_training: bool = False
-    mock_output_path: Optional[str] = "/tmp/mock_trained_model.tar"
-
+    mock_training_samples_interval: int = 10
+    job_name: str = "default_job"
+    
 INPUT_SCHEMA = {
     'zip_url': {
         'type': str,
