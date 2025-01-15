@@ -39,17 +39,12 @@ async def run(job):
     dataset_dir = Path("input_images")
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create tasks for image processing
-    tasks = []
+    # Process images sequentially
     if 'zip_url' in job_input:
-        tasks.append(asyncio.create_task(zip_images(job_input['zip_url'], dataset_dir)))
+        zip_images(job_input['zip_url'], dataset_dir)
 
     if 'base64_images' in job_input:    
-        tasks.append(asyncio.create_task(save_base64_images(job_input['base64_images'], dataset_dir)))
-    
-    # Wait for all image processing tasks to complete
-    if tasks:
-        await asyncio.gather(*tasks)
+        save_base64_images(job_input['base64_images'], dataset_dir)
         
     # Parse and validate training parameters
     try:
@@ -62,9 +57,9 @@ async def run(job):
     # Run training
     try:
         logger.info("Starting training process")
+        params = TrainingParams.parse_obj(job_input['training_params'])
         output_path = await flux_server.train.handle_training(
-            # input_images_path=str(temp_path),
-            **params_dict
+            training_params=params
         )
         
         logger.info(f"Training completed successfully. Output at {output_path}")
