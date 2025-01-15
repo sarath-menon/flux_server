@@ -22,6 +22,8 @@ class TrainingParams(BaseModel):
     wandb_sample_interval: int = 100
     wandb_sample_prompts: Optional[str] = None
     wandb_save_interval: int = 100
+    mock_training: bool = False
+    mock_output_path: Optional[str] = "/tmp/mock_trained_model.tar"
 
 INPUT_SCHEMA = {
     'zip_url': {

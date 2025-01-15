@@ -129,6 +129,17 @@ async def handle_training(
 ) -> Path:
     """Handle the training process with parameters from TrainingParams model"""
     logger.info("Starting training process")
+    
+    # Add mock handling at the start
+    if training_params.mock_training:
+        logger.info("Using mock training mode")
+        mock_path = Path(training_params.mock_output_path)
+        # Create a mock tar file
+        if not mock_path.parent.exists():
+            mock_path.parent.mkdir(parents=True)
+        os.system(f"touch {mock_path}")
+        return mock_path
+
     logger.debug(f"Training parameters: trigger_word={training_params.trigger_word}, steps={training_params.steps}, learning_rate={training_params.learning_rate}")
     
     clean_up()
