@@ -5,7 +5,6 @@ from pathlib import Path
 import base64
 import asyncio
 from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
 import time
 
 import runpod
@@ -15,6 +14,7 @@ from flux_server.custom_types import TrainingParams, INPUT_SCHEMA
 import flux_server.train
 
 from utils import save_base64_images, zip_images
+from file_handler import OutputFileHandler
 
 # Logging configuration
 logging.basicConfig(
@@ -24,29 +24,40 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-class OutputFileHandler(FileSystemEventHandler):
-    def __init__(self):
-        self.new_files = []
-        
-    def on_created(self, event):
-        if not event.is_directory:
-            self.new_files.append(event.src_path)
-
 async def monitor_output_directory(path, timeout=300):  # 5 minutes timeout
     event_handler = OutputFileHandler()
     observer = Observer()
     observer.schedule(event_handler, path, recursive=False)
     observer.start()
-    print(f"Monitoring output directory: {path}")
+    logger.info(f"Monitoring output directory: {Path(path).absolute()}")
     
     try:
         start_time = time.time()
         while time.time() - start_time < timeout:
             if event_handler.new_files:
+                logger.info(f"New files detected: {event_handler.new_files}")
                 files = event_handler.new_files.copy()
                 event_handler.new_files.clear()
                 for file_path in files:
-                    yield {"type": "file_created", "path": file_path}
+                    # Only process image files
+                    if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')):
+                        try:
+                            with open(file_path, "rb") as image_file:
+                                image_data = base64.b64encode(image_file.read()).decode('utf-8')
+                                yield {
+                                    "type": "image",
+                                    "path": file_path,
+                                    "filename": Path(file_path).name,
+                                    "content": image_data
+                                }
+                                return
+                        except Exception as e:
+                            msg = f"Failed to process image {file_path}: {str(e)}"
+                            logger.error(msg)
+                            yield {"error": msg}
+                    else:
+                        # For non-image files, just yield the path as before
+                        yield {"type": "file_created", "path": file_path}
             await asyncio.sleep(1)
     finally:
         observer.stop()
@@ -130,8 +141,9 @@ async def run(job):
     finally:
         # Cleanup
         rp_cleanup.clean(['input_objects'])
-        # delete the input images   
-        shutil.rmtree(dataset_dir)
+        # Delete the input images directory if it exists
+        if dataset_dir.exists():
+            shutil.rmtree(dataset_dir)
 
 async def handler(job):
     """

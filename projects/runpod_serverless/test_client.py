@@ -14,7 +14,8 @@ payload = {
             "resolution": "512,768,1024",
             "lora_rank": 16,
             "caption_dropout_rate": 0.05,
-            "optimizer": "adamw8bit"
+            "optimizer": "adamw8bit",
+            "mock_training": True
         },
         "base64_images": {}
     }

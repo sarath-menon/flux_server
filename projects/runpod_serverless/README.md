@@ -13,3 +13,15 @@ With runpod worker
 ```
 python projects/runpod_serverless/rp_handler_async.py
 ```
+
+Run client
+
+```
+python projects/runpod_serverless/test_client.py
+```
+
+Copy sample image to output directory
+```
+rm -rf output/sample.png
+cp resources/sample.png output/sample.png
+```
