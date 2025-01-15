@@ -4,6 +4,9 @@ import shutil
 from pathlib import Path
 import base64
 import asyncio
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import time
 
 import runpod
 from runpod.serverless.utils import rp_download, rp_cleanup
@@ -21,7 +24,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-async def async_handler(job):
+class OutputFileHandler(FileSystemEventHandler):
+    def __init__(self):
+        self.new_files = []
+        
+    def on_created(self, event):
+        if not event.is_directory:
+            self.new_files.append(event.src_path)
+
+async def monitor_output_directory(path, timeout=300):  # 5 minutes timeout
+    event_handler = OutputFileHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path, recursive=False)
+    observer.start()
+    print(f"Monitoring output directory: {path}")
+    
+    try:
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if event_handler.new_files:
+                files = event_handler.new_files.copy()
+                event_handler.new_files.clear()
+                for file_path in files:
+                    yield {"type": "file_created", "path": file_path}
+            await asyncio.sleep(1)
+    finally:
+        observer.stop()
+        observer.join()
+
+async def run(job):
     '''
     RunPod async handler for training requests
     '''
@@ -30,47 +61,61 @@ async def async_handler(job):
     # Validate inputs
     if 'errors' in (job_input := validate(job_input, INPUT_SCHEMA)):
         yield {'error': job_input['errors']}
-        return
+        return  # Early return after yielding error
 
     job_input = job_input['validated_input']
 
     if not job_input.get('base64_images') and not job_input.get('zip_url'):          
         yield {'error': 'Images must be provided as base64 strings or a ZIP file URL'}
-        return
+        return  # Early return after yielding error
 
     dataset_dir = Path("input_images")
     dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        # Create tasks for image processing
-        tasks = []
-        if 'zip_url' in job_input:
-            tasks.append(asyncio.create_task(zip_images(job_input['zip_url'], dataset_dir)))
+    # Process images sequentially
+    if 'zip_url' in job_input:
+        zip_images(job_input['zip_url'], dataset_dir)
 
-        if 'base64_images' in job_input:    
-            tasks.append(asyncio.create_task(save_base64_images(job_input['base64_images'], dataset_dir)))
+    if 'base64_images' in job_input:    
+        save_base64_images(job_input['base64_images'], dataset_dir)
         
-        # Wait for all image processing tasks to complete
-        if tasks:
-            yield {"status": "processing", "message": "Processing input images..."}
-            await asyncio.gather(*tasks)
-            
-        # Parse and validate training parameters
-        try:
-            params_dict = TrainingParams.parse_obj(job_input['training_params'])
-            params_dict = params_dict.dict(exclude_none=True)
-        except Exception as e:
-            logger.error(f"Failed to parse parameters: {str(e)}")
-            yield {"error": f"Invalid training parameters: {str(e)}"}
-            return
+    # Parse and validate training parameters
+    try:
+        params_dict = TrainingParams.model_validate(job_input['training_params'])
+        params_dict = params_dict.model_dump(exclude_none=True)
+    except Exception as e:
+        logger.error(f"Failed to parse parameters: {str(e)}")
+        yield {"error": f"Invalid training parameters: {str(e)}"}
+        return  # Early return after yielding error
+    
+    # Run training
+    try:
+        logger.info("Starting training process")
+        params = TrainingParams.model_validate(job_input['training_params'])
+        
+        # Start monitoring the output directory
+        output_dir = Path("./output")
+        output_dir.mkdir(exist_ok=True)
+        
+        # Create monitoring task
+        monitor_task = monitor_output_directory(output_dir)
         
         # Run training
-        logger.info("Starting training process")
-        yield {"status": "processing", "message": "Starting training process..."}
-        
-        output_path = await flux_server.train.handle_training(
-            **params_dict
+        training_task = asyncio.create_task(
+            flux_server.train.handle_training(training_params=params)
         )
+        
+        # Monitor for new files while training is running
+        while not training_task.done():
+            try:
+                async for file_event in monitor_task:
+                    yield file_event
+            except StopAsyncIteration:
+                break
+            await asyncio.sleep(1)
+        
+        # Get the training result
+        output_path = await training_task
         
         logger.info(f"Training completed successfully. Output at {output_path}")
         yield {
@@ -88,7 +133,16 @@ async def async_handler(job):
         # delete the input images   
         shutil.rmtree(dataset_dir)
 
+async def handler(job):
+    """
+    Wrapper handler that consumes the async generator
+    """
+    results = []
+    async for result in run(job):
+        results.append(result)
+    return results
+
 runpod.serverless.start({
-    "handler": async_handler,
-    "return_aggregate_stream": False  # Set to False to stream individual results
+    "handler": handler,
+    "return_aggregate_stream": False  # Changed to False since we're aggregating in the handler
 })

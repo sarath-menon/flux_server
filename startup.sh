@@ -1,21 +1,7 @@
  #!/bin/bash
 
 echo "Running startup.sh"
-
 cd /home/flux_server/
-
-# check if huggingface token and openai api key is set 
-if [ -z "$HUGGINGFACE_TOKEN" ]; then
-    echo "HUGGINGFACE_TOKEN is not set"
-else
-    echo "HUGGINGFACE_TOKEN is set"
-fi
-
-if [ -z "$OPENAI_API_KEY" ]; then
-    echo "OPENAI_API_KEY is not set"
-else
-    echo "OPENAI_API_KEY is set"
-fi
 
 # install poetry
 curl -sSL https://install.python-poetry.org | python3 -
@@ -27,15 +13,9 @@ pip config set global.cache-dir "/workspace/.cache/pip"
 poetry config cache-dir "/workspace/.cache/pypoetry"
 export HF_HOME="/workspace/models"
 
-# # install dependencies for ai-toolkit
-# python -m pip install -r flux_server/ai-toolkit/requirements.txt
-
 # install poetry dependencies
 poetry config virtualenvs.create false
 poetry install
 
-# # start fastapi server
-# python projects/fastapi_server/main.py
-
-# start runpod worker
-python projects/runpod_serverless/rp_handler.py
+# # start runpod worker
+# python projects/runpod_serverless/rp_handler.py

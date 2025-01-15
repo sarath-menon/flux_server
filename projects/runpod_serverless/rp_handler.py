@@ -3,8 +3,8 @@ import logging
 import shutil
 from pathlib import Path
 import base64
-
 import runpod
+
 from runpod.serverless.utils import rp_download, rp_cleanup
 from runpod.serverless.utils.rp_validator import validate
 from flux_server.custom_types import TrainingParams, INPUT_SCHEMA
@@ -55,9 +55,9 @@ def run(job):
     # Run training
     try:
         logger.info("Starting training process")
-        output_path = flux_server.train.handle_training(
-            # input_images_path=str(temp_path),
-            **params_dict
+        params = TrainingParams.parse_obj(job_input['training_params'])
+        output_path = flux_server.train.handle_training_sync(
+            training_params=params
         )
         
         logger.info(f"Training completed successfully. Output at {output_path}")

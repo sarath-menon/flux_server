@@ -3,6 +3,8 @@ import sys
 import shutil
 import subprocess
 import logging
+import asyncio
+from functools import partial
 
 # Add necessary paths
 sys.path.append("flux_server/ai-toolkit")
@@ -23,6 +25,7 @@ from .caption import Captioner
 from jobs import BaseJob
 from toolkit.config import get_config
 from extensions_built_in.sd_trainer.SDTrainer import SDTrainer
+from .custom_types import TrainingParams
 
 # Set environment variables
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
@@ -121,75 +124,74 @@ def download_weights():
         t2 = time.time()
         print(f"Downloaded base weights in {t2 - t1} seconds")
 
-def handle_training(
-    # input_images_path: str,
-    trigger_word: str = "TOK",
-    autocaption: bool = False,
-    autocaption_prefix: Optional[str] = None,
-    autocaption_suffix: Optional[str] = None,
-    steps: int = 1000,
-    learning_rate: float = 4e-4,
-    batch_size: int = 1,
-    resolution: str = "512,768,1024",
-    lora_rank: int = 16,
-    caption_dropout_rate: float = 0.05,
-    optimizer: str = "adamw8bit",
-    cache_latents_to_disk: bool = False,
-    layers_to_optimize_regex: Optional[str] = None,
-    wandb_api_key: Optional[str] = None,
-    wandb_project: str = JOB_NAME,
-    wandb_run: Optional[str] = None,
-    wandb_entity: Optional[str] = None,
-    wandb_sample_interval: int = 100,
-    wandb_sample_prompts: Optional[str] = None,
-    wandb_save_interval: int = 100,
+async def handle_training(
+    training_params: TrainingParams,
 ) -> Path:
+    """Handle the training process with parameters from TrainingParams model"""
     logger.info("Starting training process")
-    logger.debug(f"Training parameters: trigger_word={trigger_word}, steps={steps}, learning_rate={learning_rate}")
+    
+    # Add mock handling at the start
+    if training_params.mock_training:
+        logger.info("Using mock training mode")
+        mock_path = Path(training_params.mock_output_path)
+        # Create a mock tar file
+        if not mock_path.parent.exists():
+            mock_path.parent.mkdir(parents=True)
+        os.system(f"touch {mock_path}")
+        return mock_path
+
+    logger.debug(f"Training parameters: trigger_word={training_params.trigger_word}, steps={training_params.steps}, learning_rate={training_params.learning_rate}")
     
     clean_up()
     output_path = Path("/tmp/trained_model.tar")
 
     layers_to_optimize = None
-    if layers_to_optimize_regex:
-        logger.info(f"Matching layers with regex: {layers_to_optimize_regex}")
-        layers_to_optimize = match_layers_to_optimize(layers_to_optimize_regex)
+    if training_params.layers_to_optimize_regex:
+        logger.info(f"Matching layers with regex: {training_params.layers_to_optimize_regex}")
+        layers_to_optimize = match_layers_to_optimize(training_params.layers_to_optimize_regex)
         if not layers_to_optimize:
-            logger.error(f"No layers matched regex: {layers_to_optimize_regex}")
+            logger.error(f"No layers matched regex: {training_params.layers_to_optimize_regex}")
             raise ValueError(
-                f"The regex '{layers_to_optimize_regex}' didn't match any layers. These layers can be optimized:\n"
+                f"The regex '{training_params.layers_to_optimize_regex}' didn't match any layers. These layers can be optimized:\n"
                 + "\n".join(available_layers_to_optimize)
             )
 
     sample_prompts = []
-    if wandb_sample_prompts:
-        sample_prompts = [p.strip() for p in wandb_sample_prompts.split("\n")]
+    if training_params.wandb_sample_prompts:
+        sample_prompts = [p.strip() for p in training_params.wandb_sample_prompts.split("\n")]
 
     # Create training config
     train_config = create_training_config(
-        trigger_word, steps, learning_rate, batch_size, resolution,
-        lora_rank, caption_dropout_rate, optimizer, cache_latents_to_disk,
-        layers_to_optimize, wandb_api_key, wandb_save_interval,
-        wandb_sample_interval, sample_prompts
+        training_params.trigger_word, training_params.steps, 
+        training_params.learning_rate, training_params.batch_size,
+        training_params.resolution, training_params.lora_rank,
+        training_params.caption_dropout_rate, training_params.optimizer,
+        training_params.cache_latents_to_disk, layers_to_optimize,
+        training_params.wandb_api_key, training_params.wandb_save_interval,
+        training_params.wandb_sample_interval, sample_prompts
     )
 
     logger.info("Setting up W&B client")
     wandb_client = setup_wandb(
-        wandb_api_key, trigger_word, autocaption, autocaption_prefix,
-        autocaption_suffix, steps, learning_rate, batch_size, resolution,
-        lora_rank, caption_dropout_rate, optimizer, sample_prompts,
-        wandb_project, wandb_entity, wandb_run
+        training_params.wandb_api_key, training_params.trigger_word,
+        training_params.autocaption, training_params.autocaption_prefix,
+        training_params.autocaption_suffix, training_params.steps,
+        training_params.learning_rate, training_params.batch_size,
+        training_params.resolution, training_params.lora_rank,
+        training_params.caption_dropout_rate, training_params.optimizer,
+        sample_prompts, training_params.wandb_project,
+        training_params.wandb_entity, training_params.wandb_run
     )
 
     # # download_weights()
     # extract_zip(Path(input_images_path), INPUT_DIR)
 
-    if not trigger_word:
+    if not training_params.trigger_word:
         logger.debug("No trigger word provided, removing from config")
         del train_config["config"]["process"][0]["trigger_word"]
 
     logger.info("Handling image captioning")
-    handle_captioning(autocaption, autocaption_prefix, autocaption_suffix)
+    handle_captioning(training_params.autocaption, training_params.autocaption_prefix, training_params.autocaption_suffix)
 
     logger.info("Starting training job")
     job = CustomJob(get_config(train_config, name=None), wandb_client)
@@ -335,3 +337,11 @@ def process_output_files():
     captions_dir.mkdir(exist_ok=True)
     for caption_file in INPUT_DIR.glob("*.txt"):
         shutil.copy(caption_file, captions_dir) 
+
+def handle_training_sync(
+    training_params: TrainingParams,
+) -> Path:
+    """
+    Synchronous wrapper for handle_training using asyncio.run()
+    """
+    return asyncio.run(handle_training(training_params)) 
