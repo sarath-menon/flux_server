@@ -9,7 +9,7 @@ python runpod_workers/demo_async.py --rp_serve_api --rp_api_port 8006
 Start webhook server
 
 ```
-python rp_client.py
+python demo_client.py
 ```
 
 Start python client

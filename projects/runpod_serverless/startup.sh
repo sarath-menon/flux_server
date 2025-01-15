@@ -12,12 +12,9 @@ pip config set global.cache-dir "/workspace/.cache/pip"
 poetry config cache-dir "/workspace/.cache/pypoetry"
 export HF_HOME="/workspace/models"
 
-# # install dependencies for ai-toolkit
-# python -m pip install -r flux_server/ai-toolkit/requirements.txt
-
 # install poetry dependencies
 poetry config virtualenvs.create false
 poetry install
 
 # start runpod worker
-python projects/runpod_serverless/rp_handler.py
+python projects/runpod_serverless/rp_handler_async.py
