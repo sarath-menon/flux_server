@@ -19,6 +19,6 @@ async def async_generator_handler(job):
 runpod.serverless.start(
     {
         "handler": async_generator_handler,  # Required: Specify the async handler
-        "return_aggregate_stream": False,  # Optional: Aggregate results are accessible via /run endpoint
+        "return_aggregate_stream": True, 
     }
 )
