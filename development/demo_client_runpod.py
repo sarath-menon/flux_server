@@ -3,20 +3,14 @@ import runpod
 import os
 
 runpod.api_key = os.getenv("RUNPOD_API_KEY")
-ENDPOINT_ID = "hw1xb1oimoyvie"
+ENDPOINT_ID = "jycz4f0g9y6d2k"
 endpoint = runpod.Endpoint(ENDPOINT_ID)
 #%%
 
-run_request = endpoint.run_sync(
-    {"number": 7}
+run_request = endpoint.run(
+    {"number": 7, "stream": True}
 )
 
-# Check the status of the endpoint run request
-print(run_request.status())
-
-#%%
-
-# Get the output of the endpoint run request, blocking until the endpoint run is complete.
-print(run_request.output())
-
-#%%
+for output in run_request.stream():
+    print(output)
+# %%
