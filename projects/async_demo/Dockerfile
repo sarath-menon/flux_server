@@ -1,4 +1,4 @@
-FROM runpod/runpod/base:0.6.2-cpu
+FROM runpod/base:0.6.2-cpu
 
 LABEL authors="sarath_suresh"
 
