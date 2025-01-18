@@ -1,4 +1,8 @@
+# Build docker image
 
+```
+./projects/runpod_serverless/build_docker.sh
+```
 
 # Testing
 
@@ -21,6 +25,7 @@ python projects/runpod_serverless/test_client.py
 ```
 
 Copy sample image to output directory
+
 ```
 rm -rf output/sample.png
 cp resources/sample.png output/sample.png
