@@ -151,8 +151,9 @@ async def handle_training(
             )
 
     sample_prompts = []
-    if training_params.wandb_sample_prompts:
-        sample_prompts = [p.strip() for p in training_params.wandb_sample_prompts.split("\n")]
+    if training_params.sample_prompts:
+        sample_prompts = [p.strip() for p in training_params.sample_prompts.split("\n")]
+        logger.info(f"Sample prompts: {sample_prompts}")
 
     # Create training config
     train_config = create_training_config(
@@ -160,9 +161,10 @@ async def handle_training(
         training_params.learning_rate, training_params.batch_size,
         training_params.resolution, training_params.lora_rank,
         training_params.caption_dropout_rate, training_params.optimizer,
+        training_params.cache_latents,
         training_params.cache_latents_to_disk, layers_to_optimize,
         training_params.wandb_api_key, training_params.wandb_save_interval,
-        training_params.wandb_sample_interval, sample_prompts
+        training_params.wandb_sample_interval, training_params.sample_prompts
     )
 
     logger.info("Setting up W&B client")
@@ -205,7 +207,7 @@ async def handle_training(
 
 def create_training_config(trigger_word, steps, learning_rate, batch_size, resolution,
                          lora_rank, caption_dropout_rate, optimizer, cache_latents_to_disk,
-                         layers_to_optimize, wandb_api_key, wandb_save_interval,
+                         cache_latents, layers_to_optimize, wandb_api_key, wandb_save_interval,
                          wandb_sample_interval, sample_prompts):
     train_config = OrderedDict(
         {
@@ -237,7 +239,7 @@ def create_training_config(trigger_word, steps, learning_rate, batch_size, resol
                                 "caption_dropout_rate": caption_dropout_rate,
                                 "shuffle_tokens": False,
                                 "cache_latents_to_disk": cache_latents_to_disk,
-                                "cache_latents": True,
+                                "cache_latents": cache_latents,
                                 "resolution": [
                                     int(res) for res in resolution.split(",")
                                 ],
@@ -266,19 +268,15 @@ def create_training_config(trigger_word, steps, learning_rate, batch_size, resol
                         },
                         "sample": {
                             "sampler": "flowmatch",
-                            "sample_every": (
-                                wandb_sample_interval
-                                if wandb_api_key and sample_prompts
-                                else steps + 1
-                            ),
-                            "width": 1024,
-                            "height": 1024,
+                            "sample_every": training_params.sample_every,
+                            "width": training_params.sample_width,
+                            "height": training_params.sample_height,
                             "prompts": sample_prompts,
                             "neg": "",
-                            "seed": 42,
-                            "walk_seed": True,
-                            "guidance_scale": 3.5,
-                            "sample_steps": 28,
+                            "seed": training_params.sample_seed,
+                            "walk_seed": training_params.sample_walk_seed,
+                            "guidance_scale": training_params.sample_guidance_scale,
+                            "sample_steps": training_params.sample_steps,
                         },
                     }
                 ],

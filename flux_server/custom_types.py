@@ -14,6 +14,7 @@ class TrainingParams(BaseModel):
     caption_dropout_rate: float = 0.05
     optimizer: str = "adamw8bit"
     cache_latents_to_disk: bool = False
+    cache_latents: bool = False
     layers_to_optimize_regex: Optional[str] = None
     wandb_api_key: Optional[str] = None
     wandb_project: str = "demo_project"
@@ -24,8 +25,16 @@ class TrainingParams(BaseModel):
     wandb_save_interval: int = 100
     mock_training: bool = False
     mock_training_samples_interval: int = 10
+    sample_every: int = 100
+    sample_steps: int = 40
+    sample_guidance_scale: float = 3.5
+    sample_width: int = 1024
+    sample_height: int = 1024
+    sample_prompts: Optional[str] = None
+    sample_seed: int = 42
+    sample_walk_seed: bool = True
     job_name: str = "default_job"
-    
+
 INPUT_SCHEMA = {
     'zip_url': {
         'type': str,
