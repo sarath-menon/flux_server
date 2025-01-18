@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Read version from version.txt or create if doesn't exist
-VERSION_FILE="version.txt"
+VERSION_FILE="projects/runpod_serverless/version.txt"
 if [ -f "$VERSION_FILE" ]; then
     VERSION=$(cat $VERSION_FILE)
 else
