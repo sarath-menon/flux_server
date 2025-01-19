@@ -9,8 +9,8 @@ else
     echo $VERSION > $VERSION_FILE
 fi
 
-# Build and push Runpod worker
-docker build -t flux_server_runpod --build-arg CACHEBUST=$(date +%s) projects/runpod_serverless
+# Build and push Runpod worker with cache busting
+docker build --build-arg CACHEBUST=$(date +%s) -t flux_server_runpod projects/runpod_serverless
 docker tag flux_server_runpod sarathmenon1999/flux_server_runpod:${VERSION}
 docker push sarathmenon1999/flux_server_runpod:${VERSION}
 

@@ -11,7 +11,8 @@
       "lora_rank": 16,
       "caption_dropout_rate": 0.05,
       "optimizer": "adamw8bit",
-      "mock_training": true
+      "mock_training": true,
+      "sample_every": 10
     },
     "base64_images": {}
   },

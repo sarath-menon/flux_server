@@ -12,7 +12,11 @@ RUN pip install runpod
 # symlink runpod volume to workspace
 RUN rm -rf /workspace && ln -s /runpod-volume /workspace
 
+# Add a build argument for cache busting
+ARG CACHEBUST=1
+
 WORKDIR /home
+# Use the build argument to invalidate the cache
 RUN git clone https://github.com/sarath-menon/flux_server.git --recurse-submodules && echo $CACHEBUST
 RUN chmod +x ./flux_server/projects/runpod_serverless/startup.sh
 

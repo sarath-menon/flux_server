@@ -38,8 +38,8 @@ run_request = endpoint.run(
 )
 
 #%%
-for output in run_request.stream(timeout=200):
+for output in run_request.stream():
     print(output)
 # %%
-print(run_request.)
+print(run_request.get_output())
 # %%
